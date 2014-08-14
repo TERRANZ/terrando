@@ -8,9 +8,9 @@ import org.slf4j.LoggerFactory;
 import ru.terra.ndo.server.constants.FilePatchConstants;
 import ru.terra.ndo.server.dto.PhotoDTO;
 import ru.terra.ndo.server.engine.CaptchaEngine;
-import ru.terra.ndo.server.engine.PhotoInfo;
 import ru.terra.ndo.server.engine.TerrandoEngine;
 import ru.terra.ndo.server.engine.YandexCaptcha;
+import ru.terra.ndo.server.entity.PhotoInfo;
 import ru.terra.server.controller.AbstractResource;
 import ru.terra.server.dto.CommonDTO;
 
@@ -37,14 +37,14 @@ public class PhotoController extends AbstractResource {
     @Path("/add")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     public CommonDTO add(@Context HttpContext hc,
-                         @FormDataParam("info") String info,
+                         @FormDataParam("info") String uid,
                          @FormDataParam("lat") Double lat,
                          @FormDataParam("lon") Double lon,
                          @FormDataParam("captcha") String captcha,
                          @FormDataParam("capval") String capval,
                          @FormDataParam("file") InputStream uploadedInputStream,
                          @FormDataParam("file") FormDataContentDisposition fileDetail) {
-        logger.info("Receiving image from " + info + " with lat=" + lat + " lon=" + lon);
+        logger.info("Receiving image from " + uid + " with lat=" + lat + " lon=" + lon);
         logger.info("Captcha: " + captcha + " and val = " + capval);
         if (captchaEngine.checkCaptcha(capval, captcha)) {
             logger.info("Captcha is OK, saving photo");
@@ -54,13 +54,13 @@ public class PhotoController extends AbstractResource {
                 fileName += String.valueOf(new Date().getTime());
                 fileName += uploadFileFileName.substring(uploadFileFileName.lastIndexOf("."), uploadFileFileName.length());
 
-                String uploadedFileLocation = FilePatchConstants.getPiczFolder() + "/" + info + "/" + fileName;
+                String uploadedFileLocation = FilePatchConstants.getPiczFolder() + "/" + uid + "/" + fileName;
                 // save it
-                File targetDir = new File(FilePatchConstants.getPiczFolder() + "/" + info + "/");
+                File targetDir = new File(FilePatchConstants.getPiczFolder() + "/" + uid + "/");
                 if (!targetDir.exists())
                     targetDir.mkdirs();
                 writeToFile(uploadedInputStream, uploadedFileLocation);
-                terrandoEngine.regPhoto(new PhotoInfo(info, lon, lat, fileName));
+                terrandoEngine.regPhoto(new PhotoInfo(lon, lat, fileName, false), uid);
             }
             return new CommonDTO();
         }

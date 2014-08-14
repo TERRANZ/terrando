@@ -3,7 +3,7 @@ package ru.terra.ndo.server.constants;
 import ru.terra.server.constants.CoreUrlConstants;
 
 public class URLConstants extends CoreUrlConstants {
-    public static final String SERVER_URL = "http://terranz.ath.cx:8181/terrando/";
+    public static final String SERVER_URL = "http://192.168.10.1:8182/terrando/";
 
 
     public class DoJson {

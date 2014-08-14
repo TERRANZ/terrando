@@ -12,6 +12,7 @@ import ru.terra.ndo.android.constants.URLConstants;
 
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.Random;
 import java.util.Scanner;
 
 /**
@@ -40,8 +41,9 @@ public class GetPhotoService extends IntentService {
                 PendingIntent resultPendingIntent = PendingIntent.getActivity(this, 0, resultIntent, PendingIntent.FLAG_UPDATE_CURRENT);
                 NotificationCompat.Builder builder = builder("New photo!");
                 builder.setContentIntent(resultPendingIntent);
-                int mNotificationId = 001;
+
                 NotificationManager mNotifyMgr = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                int mNotificationId = new Random().nextInt();
                 mNotifyMgr.notify(mNotificationId, builder.build());
             }
         } catch (Exception e) {
@@ -54,6 +56,7 @@ public class GetPhotoService extends IntentService {
                 new NotificationCompat.Builder(this)
                         .setSmallIcon(R.drawable.ic_launcher)
                         .setContentTitle("Terrando")
+                        .setAutoCancel(true)
                         .setContentText(msg);
     }
 }

@@ -1,1 +1,14 @@
 ru/terra/ndo/android/Manifest.class
+com/google/android/gms/R$style.class
+com/google/android/gms/R$id.class
+com/google/android/gms/R$styleable.class
+com/google/android/gms/R$color.class
+com/google/android/gms/R$drawable.class
+ru/terra/ndo/android/R$integer.class
+com/google/android/gms/BuildConfig.class
+com/google/android/gms/R$integer.class
+com/google/android/gms/R.class
+com/google/android/gms/R$attr.class
+android/UnusedStub.class
+ru/terra/ndo/android/MainActivity$ErrorDialogFragment.class
+com/google/android/gms/R$string.class

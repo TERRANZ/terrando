@@ -1,17 +1,12 @@
 package ru.terra.ndo.android;
 
-import android.app.Activity;
-import android.app.AlarmManager;
-import android.app.Dialog;
-import android.app.PendingIntent;
-import android.content.Context;
+import android.app.*;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.hardware.Camera;
 import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
@@ -22,6 +17,10 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.Toast;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesClient;
+import com.google.android.gms.location.LocationClient;
 import ru.terra.ndo.android.task.LoadCaptchaAsyncTask;
 import ru.terra.ndo.android.task.SaveInBackground;
 import ru.terra.ndo.android.task.SendPhotoAsyncTask;
@@ -36,13 +35,14 @@ import java.util.UUID;
  * Date: 24.06.14
  * Time: 18:08
  */
-public class MainActivity extends Activity implements SurfaceHolder.Callback, View.OnClickListener, Camera.PictureCallback, Camera.PreviewCallback, Camera.AutoFocusCallback, LocationListener {
+public class MainActivity extends Activity implements GooglePlayServicesClient.ConnectionCallbacks,
+        GooglePlayServicesClient.OnConnectionFailedListener, SurfaceHolder.Callback, View.OnClickListener, Camera.PictureCallback, Camera.PreviewCallback, Camera.AutoFocusCallback {
     private Camera camera;
     private SurfaceHolder surfaceHolder;
     private SurfaceView preview;
     private Button shotBtn;
     private SharedPreferences sharedPreferences;
-    private LocationManager locationManager;
+    private LocationClient mLocationClient;
 
 
     @Override
@@ -65,13 +65,12 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Vi
             editor.commit();
         }
 
-        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, this);
-
         Intent intent = new Intent(this, GetPhotoService.class);
         PendingIntent pendingIntent = PendingIntent.getService(this, 12345, intent, PendingIntent.FLAG_CANCEL_CURRENT);
         AlarmManager am = (AlarmManager) getSystemService(Activity.ALARM_SERVICE);
-        am.setRepeating(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime(), 60000 * 3, pendingIntent);
+        am.setRepeating(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime(), 60000, pendingIntent);
+
+        mLocationClient = new LocationClient(this, this, this);
     }
 
 
@@ -131,34 +130,51 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Vi
     @Override
     public void onClick(View v) {
         if (v == shotBtn) {
-            camera.takePicture(null, null, this);
+            try {
+                camera.autoFocus(this);
+            } catch (Exception e) {
+                Toast.makeText(this, "Ошибка автофокуса", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
     @Override
-    public void onPictureTaken(byte[] paramArrayOfByte, Camera paramCamera) {
+    public void onPictureTaken(byte[] paramArrayOfByte, final Camera paramCamera) {
         new SaveInBackground(new Wod() {
             @Override
             public void wod(final String... param) {
                 final Dialog dialog = new Dialog(MainActivity.this);
                 dialog.setContentView(R.layout.d_send_photo);
                 final ImageView imageView = (ImageView) dialog.findViewById(R.id.ivCaptcha);
+                imageView.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        new LoadCaptchaAsyncTask(imageView).execute();
+                    }
+                });
                 new LoadCaptchaAsyncTask(imageView).execute();
                 final EditText editText = (EditText) dialog.findViewById(R.id.edtCapVal);
                 Button sendBtn = (Button) dialog.findViewById(R.id.btnSend);
                 sendBtn.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        Location location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-                        new SendPhotoAsyncTask(MainActivity.this, sharedPreferences.getString("install", UUID.randomUUID().toString()), location.getLongitude(), location.getLatitude(), (String) imageView.getTag(), editText.getText().toString(), new File(param[0])).execute();
+                        Location currentLocation = mLocationClient.getLastLocation();
+                        if (currentLocation != null)
+                            new SendPhotoAsyncTask(MainActivity.this, sharedPreferences.getString("install", UUID.randomUUID().toString()), currentLocation.getLongitude(), currentLocation.getLatitude(), (String) imageView.getTag(), editText.getText().toString(), new File(param[0])).execute();
+                        else
+                            Toast.makeText(MainActivity.this, "Unable to get location", Toast.LENGTH_LONG).show();
                         dialog.dismiss();
                     }
                 });
                 dialog.show();
+                dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                    @Override
+                    public void onDismiss(DialogInterface dialogInterface) {
+                        paramCamera.startPreview();
+                    }
+                });
             }
         }).execute(paramArrayOfByte);
-        // после того, как снимок сделан, показ превью отключается. необходимо включить его
-        //paramCamera.startPreview();
     }
 
     @Override
@@ -181,6 +197,18 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Vi
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        mLocationClient.connect();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        mLocationClient.disconnect();
+    }
+
+    @Override
     protected void onPause() {
         super.onPause();
 
@@ -190,6 +218,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Vi
             camera.release();
             camera = null;
         }
+
     }
 
     public static Camera getCameraInstance() {
@@ -233,25 +262,46 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback, Vi
         }
 
         return optimalSize;
+    }         // Define a DialogFragment that displays the error dialog
+
+    @Override
+    public void onConnected(Bundle bundle) {
+        Toast.makeText(this, "Connected", Toast.LENGTH_SHORT).show();
     }
 
     @Override
-    public void onLocationChanged(Location location) {
-
+    public void onDisconnected() {
+        Toast.makeText(this, "Disconnected. Please re-connect.",
+                Toast.LENGTH_SHORT).show();
     }
 
     @Override
-    public void onStatusChanged(String s, int i, Bundle bundle) {
-
+    public void onConnectionFailed(ConnectionResult connectionResult) {
+        Toast.makeText(this, "Connection Failure : " +
+                        connectionResult.getErrorCode(),
+                Toast.LENGTH_SHORT
+        ).show();
     }
 
-    @Override
-    public void onProviderEnabled(String s) {
+    public static class ErrorDialogFragment extends DialogFragment {
+        // Global field to contain the error dialog
+        private Dialog mDialog;
 
-    }
+        // Default constructor. Sets the dialog field to null
+        public ErrorDialogFragment() {
+            super();
+            mDialog = null;
+        }
 
-    @Override
-    public void onProviderDisabled(String s) {
+        // Set the dialog to display
+        public void setDialog(Dialog dialog) {
+            mDialog = dialog;
+        }
 
+        // Return a Dialog to the DialogFragment.
+        @Override
+        public Dialog onCreateDialog(Bundle savedInstanceState) {
+            return mDialog;
+        }
     }
 }

@@ -46,6 +46,7 @@ public class PhotosActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.a_photo);
         imageView = (ImageView) findViewById(R.id.ivPhoto);
-        new LoadPhotoAsyncTask().execute(getIntent().getStringExtra("url"));
+        String url = getIntent().getStringExtra("url");
+        new LoadPhotoAsyncTask().execute(url);
     }
 }
