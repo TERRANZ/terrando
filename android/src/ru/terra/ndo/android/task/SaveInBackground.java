@@ -22,13 +22,13 @@ public class SaveInBackground extends AsyncTask<byte[], String, String> {
     @Override
     protected String doInBackground(byte[]... arrayOfByte) {
         try {
-            File saveDir = new File("/" + Environment.getExternalStorageDirectory() + "/terrando/");
+            File saveDir = new File(Environment.getExternalStorageDirectory() + "/terrando/");
 
             if (!saveDir.exists()) {
                 saveDir.mkdirs();
             }
 
-            String fileName = String.format("/" + Environment.getExternalStorageDirectory() + "/terrando/%d.jpg", System.currentTimeMillis());
+            String fileName = String.format(Environment.getExternalStorageDirectory() + "/terrando/%d.jpg", System.currentTimeMillis());
             FileOutputStream os = new FileOutputStream(fileName);
             os.write(arrayOfByte[0]);
             os.close();

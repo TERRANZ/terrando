@@ -80,9 +80,10 @@ public class MainActivity extends Activity implements GooglePlayServicesClient.C
 
         //MODIFIED HERE
         List<Camera.Size> sizes = camera.getParameters().getSupportedPictureSizes();
-        //List<Size> sizes = parameters.getSupportedPreviewSizes();
-        Camera.Size optimalSize = getOptimalPreviewSize(sizes, w, h);
+//        Camera.Size optimalSize = getOptimalPreviewSize(sizes, w, h);
+        Camera.Size optimalSize = sizes.get(2);
         parameters.setPreviewSize(optimalSize.width, optimalSize.height);
+        parameters.setPictureSize(optimalSize.width, optimalSize.height);
 
         camera.setParameters(parameters);
         camera.startPreview();

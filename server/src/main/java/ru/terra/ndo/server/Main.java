@@ -11,12 +11,5 @@ import java.io.IOException;
 public class Main {
     public static void main(String... args) throws IOException {
         new ServerBoot().start();
-        while (true) {
-            try {
-                Thread.sleep(10);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
     }
 }

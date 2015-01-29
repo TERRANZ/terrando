@@ -2,21 +2,20 @@ package ru.terra.ndo.android.task;
 
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.net.http.AndroidHttpClient;
 import android.os.AsyncTask;
 import android.util.Log;
+import org.acra.ACRA;
 import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.mime.HttpMultipartMode;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.entity.mime.content.FileBody;
 import org.apache.http.entity.mime.content.StringBody;
-import org.apache.http.impl.client.DefaultHttpClient;
 import ru.terra.ndo.android.constants.URLConstants;
 
 import java.io.File;
-import java.io.IOException;
 
 /**
  * Date: 24.06.14
@@ -42,15 +41,19 @@ public class SendPhotoAsyncTask extends AsyncTask<Void, Void, Boolean> {
         dialog = ProgressDialog.show(context, "Sending", "Sending", true);
     }
 
+    private static final int SOCKET_OPERATION_TIMEOUT = 10 * 1000;
+
     @Override
     protected Boolean doInBackground(Void... strings) {
-        HttpClient httpclient = new DefaultHttpClient();
+
+        AndroidHttpClient httpClient = AndroidHttpClient.newInstance("Terrando 0.1");
+
         HttpPost httpPost = new HttpPost(URLConstants.ADD_PHOTO);
 
         FileBody uploadFilePart = new FileBody(photo);
         MultipartEntityBuilder builder = MultipartEntityBuilder.create();
         builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
-        builder.addPart("file", uploadFilePart);
+        builder.addBinaryBody("file", photo, ContentType.MULTIPART_FORM_DATA, photo.getName());
 
         builder.addPart("captcha", new StringBody(captcha, ContentType.MULTIPART_FORM_DATA));
         builder.addPart("capval", new StringBody(capVal, ContentType.MULTIPART_FORM_DATA));
@@ -61,10 +64,13 @@ public class SendPhotoAsyncTask extends AsyncTask<Void, Void, Boolean> {
         httpPost.setEntity(builder.build());
         httpPost.setHeader("Cookie", "uid=" + info);
         try {
-            HttpResponse response = httpclient.execute(httpPost);
+            HttpResponse response = httpClient.execute(httpPost);
             Log.i("SendPhotoAsyncTask", response.getStatusLine().toString());
-        } catch (IOException e) {
+            response.getEntity().consumeContent();
+            httpClient.close();
+        } catch (Exception e) {
             exception = e;
+            ACRA.getErrorReporter().handleException(e);
             return false;
         }
         return true;
