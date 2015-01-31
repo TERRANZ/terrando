@@ -16,6 +16,8 @@ import org.apache.http.entity.mime.content.StringBody;
 import ru.terra.ndo.android.constants.URLConstants;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 
 /**
  * Date: 24.06.14
@@ -50,10 +52,15 @@ public class SendPhotoAsyncTask extends AsyncTask<Void, Void, Boolean> {
 
         HttpPost httpPost = new HttpPost(URLConstants.ADD_PHOTO);
 
-        FileBody uploadFilePart = new FileBody(photo);
         MultipartEntityBuilder builder = MultipartEntityBuilder.create();
         builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
-        builder.addBinaryBody("file", photo, ContentType.MULTIPART_FORM_DATA, photo.getName());
+        try {
+            builder.addBinaryBody("file", new FileInputStream(photo), ContentType.MULTIPART_FORM_DATA, photo.getName());
+        } catch (FileNotFoundException e) {
+            Log.e("SendPhotoAsyncTask","Unable to add photo stream to multipart",e);
+            ACRA.getErrorReporter().handleException(e);
+            return false;
+        }
 
         builder.addPart("captcha", new StringBody(captcha, ContentType.MULTIPART_FORM_DATA));
         builder.addPart("capval", new StringBody(capVal, ContentType.MULTIPART_FORM_DATA));
